@@ -500,7 +500,7 @@ export default function Room() {
                                 setEditingNameValue(user.name);
                                 setIsEditingName(true);
                               }}
-                              className="opacity-0 group-hover/user:opacity-100 hover:text-indigo-400 text-zinc-500 transition-opacity p-0.5"
+                              className="text-zinc-500 hover:text-indigo-400 p-0.5 transition-colors"
                               title="Edit display name"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
