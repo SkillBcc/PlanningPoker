@@ -60,7 +60,7 @@ export default function Landing() {
                 value={initialTask}
                 onChange={(e) => setInitialTask(e.target.value)}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                placeholder="e.g. US-101 Login Page"
+                placeholder="e.g. US-101: Login Page"
               />
             </div>
             <button
@@ -86,7 +86,7 @@ export default function Landing() {
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                placeholder="e.g. 421-xk92"
+                placeholder="e.g. 43f1xk92"
               />
             </div>
             <button
@@ -100,10 +100,10 @@ export default function Landing() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 flex flex-col items-center justify-center gap-4">
-        <div className="flex gap-6">
+      <div className="absolute bottom-4 flex flex-col items-center justify-center gap-4">
+        <div className="flex gap-4">
           <a 
-            href="https://github.com/SkillBcc/PlanningPoker" 
+            href="https://github.com/SkillBcc/PlanningPoke" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-zinc-700 hover:text-zinc-400 transition-colors"
