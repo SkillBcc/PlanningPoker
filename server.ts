@@ -2,10 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = createServer(app);
@@ -305,7 +301,7 @@ async function startServer() {
   } else {
     app.use(express.static('dist'));
     app.get('*', (req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist/index.html'));
+      res.sendFile(path.resolve(process.cwd(), 'dist/index.html'));
     });
   }
 
