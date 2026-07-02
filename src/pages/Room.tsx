@@ -136,9 +136,9 @@ export default function Room() {
           </div>
           
           <div className="space-y-2">
-            <h1 className="text-2xl font-medium tracking-tight text-white">Sessão Encerrada</h1>
+            <h1 className="text-2xl font-medium tracking-tight text-white">Session Closed</h1>
             <p className="text-sm text-zinc-400">
-              Esta sala de votação foi encerrada porque todos os participantes saíram ou a sessão expirou.
+              This voting room has been closed because all participants left or the session expired.
             </p>
           </div>
 
@@ -147,7 +147,7 @@ export default function Room() {
               onClick={() => navigate('/')}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg font-medium transition-colors text-sm shadow-lg shadow-indigo-600/10 cursor-pointer"
             >
-              Voltar para a Página Inicial
+              Back to Home Page
             </button>
           </div>
         </div>

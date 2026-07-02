@@ -75,7 +75,7 @@ export default function Landing() {
             />
             {nameError && (
               <span className="text-xs text-red-400 mt-1.5 block animate-pulse">
-                Por favor, insira o seu nome para continuar
+                Please enter your name to continue
               </span>
             )}
           </div>
