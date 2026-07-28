@@ -48,6 +48,7 @@ class WebSocketService {
   private intentionalDisconnect = false;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
+  private pongTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     let storedId = localStorage.getItem('poker_user_id');
@@ -75,7 +76,7 @@ class WebSocketService {
             this._connect();
           } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             // Send a ping to keep connection alive when foregrounded
-            this.ws.send(JSON.stringify({ type: 'PING' }));
+            this.ws.send(JSON.stringify({ type: 'SYNC' }));
           }
         }
       });
@@ -140,6 +141,10 @@ class WebSocketService {
 
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      if (data.type === 'PONG') {
+        if (this.pongTimeout) clearTimeout(this.pongTimeout);
+        return;
+      }
       if (data.type === 'ROOM_STATE') {
         this.roomStateSubject.next(data.payload);
       } else if (data.type === 'ROOM_CLOSED') {
@@ -167,14 +172,26 @@ class WebSocketService {
     this.pingTimer = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ type: 'PING' }));
+        
+        if (this.pongTimeout) clearTimeout(this.pongTimeout);
+        this.pongTimeout = setTimeout(() => {
+          console.warn('WebSocket connection timed out (no PONG received). Reconnecting...');
+          if (this.ws) {
+             this.ws.close();
+          }
+        }, 5000); // Wait 5 seconds for PONG
       }
-    }, 30000); // Send ping every 30 seconds to keep connection alive
+    }, 10000); // Send ping every 10 seconds to keep connection alive
   }
 
   private stopPing() {
     if (this.pingTimer) {
       clearInterval(this.pingTimer);
       this.pingTimer = null;
+    }
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
     }
   }
 

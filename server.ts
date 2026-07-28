@@ -95,6 +95,13 @@ wss.on('connection', (ws) => {
       const data = JSON.parse(message.toString());
       
       switch (data.type) {
+        case 'PING': { ws.send(JSON.stringify({ type: 'PONG' })); break; }
+        case 'SYNC': {
+          if (currentUser) {
+            broadcastRoomState(currentUser.roomId);
+          }
+          break;
+        }
         case 'JOIN_ROOM': {
           const { roomId, user, initialTask, deckType } = data.payload;
           if (closedRooms.has(roomId)) {
