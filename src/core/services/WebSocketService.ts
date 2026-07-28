@@ -42,6 +42,13 @@ class WebSocketService {
   private userId: string;
   private userName: string = '';
 
+  private currentRoomId: string | null = null;
+  private currentInitialTask?: string;
+  private currentDeckType?: string;
+  private intentionalDisconnect = false;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private pingTimer: NodeJS.Timeout | null = null;
+
   constructor() {
     let storedId = localStorage.getItem('poker_user_id');
     if (!storedId) {
@@ -53,6 +60,25 @@ class WebSocketService {
     const storedName = localStorage.getItem('poker_user_name');
     if (storedName) {
       this.userName = storedName;
+    }
+
+    this.setupVisibilityHandler();
+  }
+
+  private setupVisibilityHandler() {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          // If we came back to the foreground and we're disconnected (and shouldn't be), reconnect immediately
+          if (!this.intentionalDisconnect && (!this.ws || this.ws.readyState === WebSocket.CLOSED)) {
+            if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+            this._connect();
+          } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            // Send a ping to keep connection alive when foregrounded
+            this.ws.send(JSON.stringify({ type: 'PING' }));
+          }
+        }
+      });
     }
   }
 
@@ -70,8 +96,21 @@ class WebSocketService {
   }
 
   public connect(roomId: string, name: string, initialTask?: string, deckType?: string) {
+    this.intentionalDisconnect = false;
+    this.currentRoomId = roomId;
+    this.currentInitialTask = initialTask;
+    this.currentDeckType = deckType;
     this.setUserName(name);
+    this._connect();
+  }
+
+  private _connect() {
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+      this.ws.close();
+    }
     
+    if (!this.currentRoomId) return;
+
     let wsUrl: string;
     if (import.meta.env.VITE_WS_BACKEND_URL) {
       wsUrl = import.meta.env.VITE_WS_BACKEND_URL;
@@ -85,15 +124,18 @@ class WebSocketService {
     this.ws.onopen = () => {
       this.isClosed$.next(false);
       this.connectionStatus$.next(true);
+      
       this.ws?.send(JSON.stringify({
         type: 'JOIN_ROOM',
         payload: {
-          roomId,
+          roomId: this.currentRoomId,
           user: { id: this.userId, name: this.userName },
-          initialTask,
-          deckType
+          initialTask: this.currentInitialTask,
+          deckType: this.currentDeckType
         }
       }));
+
+      this.startPing();
     };
 
     this.ws.onmessage = (event) => {
@@ -102,13 +144,38 @@ class WebSocketService {
         this.roomStateSubject.next(data.payload);
       } else if (data.type === 'ROOM_CLOSED') {
         this.isClosed$.next(true);
+        this.intentionalDisconnect = true; // Stop trying to reconnect if room is completely closed
+        this.stopPing();
       }
     };
 
     this.ws.onclose = () => {
       this.connectionStatus$.next(false);
-      // Attempt reconnect logic could go here
+      this.stopPing();
+      
+      if (!this.intentionalDisconnect) {
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = setTimeout(() => {
+          this._connect();
+        }, 3000); // Try reconnecting every 3 seconds
+      }
     };
+  }
+
+  private startPing() {
+    this.stopPing();
+    this.pingTimer = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'PING' }));
+      }
+    }, 30000); // Send ping every 30 seconds to keep connection alive
+  }
+
+  private stopPing() {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
   }
 
   public changeDeck(deckType: string) {
@@ -121,6 +188,10 @@ class WebSocketService {
   }
 
   public disconnect() {
+    this.intentionalDisconnect = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.stopPing();
+    
     if (this.ws) {
       this.ws.close();
       this.ws = null;
