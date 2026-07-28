@@ -45,12 +45,12 @@ export const TaskSidebar = ({ roomState, isOwner, actions }: TaskSidebarProps) =
             <ul className="space-y-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
               {roomState.tasks.map(task => {
                 const isSelected = roomState.activeTaskId === task.id;
-                const votesArray = Object.values(task.votes || {}) as { userName: string; vote: string }[];
+                const votesArray = Object.values(task.votes || {}) as { userName: string; vote: string; disregarded?: boolean }[];
                 const isEditing = editingTaskId === task.id;
                 
                 let avgDisplay = null;
                 if (task.isRevealed) {
-                  const numericVotes = votesArray
+                  const numericVotes = votesArray.filter(v => !v.disregarded)
                     .map(v => parseInt(v.vote, 10))
                     .filter(n => !isNaN(n));
                   

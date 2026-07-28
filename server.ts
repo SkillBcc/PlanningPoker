@@ -22,6 +22,7 @@ interface User {
 interface VoteInfo {
   userName: string;
   vote: string;
+  disregarded?: boolean;
 }
 
 interface RoomTask {
@@ -283,6 +284,19 @@ wss.on('connection', (ws: any) => {
           }
           break;
         }
+        
+        case 'TOGGLE_VOTE_DISREGARD': {
+          if (!currentUser) return;
+          const room = rooms.get(currentUser.roomId);
+          if (room && room.ownerId === currentUser.userId) {
+            const task = room.tasks.find(t => t.id === data.payload.taskId);
+            if (task && task.votes[data.payload.targetUserId]) {
+              task.votes[data.payload.targetUserId].disregarded = data.payload.disregarded;
+              broadcastRoomState(room.id);
+            }
+          }
+          break;
+        }
         case 'SET_FINAL_ESTIMATE': {
           if (!currentUser) return;
           const room = rooms.get(currentUser.roomId);
@@ -381,21 +395,11 @@ wss.on('connection', (ws: any) => {
           const userIndex = room.users.findIndex(u => u.id === currentUser!.userId);
           if (userIndex !== -1) {
             room.users[userIndex].isOnline = false;
-            
-            room.tasks.forEach(task => {
-              if (!task.isRevealed) {
-                delete task.votes[currentUser!.userId];
-              }
-            });
+            // Vote preservation: Do not delete task.votes for disconnected users.
           }
         }
         
-        if (!room.users.some(u => u.isOnline)) {
-          closedRooms.add(room.id);
-          rooms.delete(room.id);
-        } else {
-          broadcastRoomState(room.id);
-        }
+        broadcastRoomState(room.id);
       }
     }
   });
@@ -429,7 +433,8 @@ function broadcastRoomState(roomId: string) {
         isOnline: u.isOnline,
         isSpectator: u.isSpectator,
         hasVoted: !!voteInfo,
-        vote: null // Handled below per-user
+        vote: null, // Handled below per-user
+        disregarded: voteInfo?.disregarded ?? false
       };
     })
   };
@@ -447,7 +452,8 @@ function broadcastRoomState(roomId: string) {
             isOnline: otherUser.isOnline,
             isSpectator: otherUser.isSpectator,
             hasVoted: !!voteInfo,
-            vote: (isRevealed || otherUser.id === uId) ? (voteInfo?.vote || null) : null
+            vote: (isRevealed || otherUser.id === uId) ? (voteInfo?.vote || null) : null,
+            disregarded: voteInfo?.disregarded ?? false
           };
         })
       };

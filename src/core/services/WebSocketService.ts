@@ -8,12 +8,13 @@ export interface UserState {
   vote: string | null;
   isOnline: boolean;
   isSpectator: boolean;
+  disregarded?: boolean;
 }
 
 export interface TaskState {
   id: string;
   title: string;
-  votes: Record<string, { userName: string; vote: string }>;
+  votes: Record<string, { userName: string; vote: string; disregarded?: boolean }>;
   isRevealed: boolean;
   finalEstimate?: string;
 }
@@ -261,6 +262,16 @@ class WebSocketService {
       this.ws.send(JSON.stringify({
         type: 'EDIT_TASK',
         payload: { taskId, title }
+      }));
+    }
+  }
+
+  
+  public toggleVoteDisregard(taskId: string, targetUserId: string, disregarded: boolean) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'TOGGLE_VOTE_DISREGARD',
+        payload: { taskId, targetUserId, disregarded }
       }));
     }
   }

@@ -130,7 +130,7 @@ export default function Room() {
         setSelectedFinalEstimate(activeTask.finalEstimate);
       } else if (isRevealed) {
         const activeVotes = roomState.users
-          .filter(u => (u.isOnline || u.hasVoted) && !u.isSpectator)
+          .filter(u => (u.isOnline || u.hasVoted) && !u.isSpectator && !u.disregarded)
           .map(u => u.vote)
           .filter((v): v is string => v !== null && v !== undefined);
 
@@ -314,7 +314,7 @@ export default function Room() {
 
   // 1. Vote Stats & Consensus calculations
   const activeVotes = roomState.users
-    .filter(u => (u.isOnline || u.hasVoted) && !u.isSpectator)
+    .filter(u => (u.isOnline || u.hasVoted) && !u.isSpectator && !u.disregarded)
     .map(u => u.vote)
     .filter((v): v is string => v !== null && v !== undefined);
 
@@ -527,13 +527,13 @@ export default function Room() {
                 <ul className="space-y-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
                   {roomState.tasks.map(task => {
                     const isSelected = roomState.activeTaskId === task.id;
-                    const votesArray = Object.values(task.votes || {}) as { userName: string; vote: string }[];
-                    const votesCount = votesArray.length;
+                    const votesArray = Object.values(task.votes || {}) as { userName: string; vote: string; disregarded?: boolean }[];
+                    const votesCount = votesArray.filter(v => !v.disregarded).length;
                     const isEditing = editingTaskId === task.id;
                     
                     let avgDisplay = null;
                     if (task.isRevealed) {
-                      const numericVotes = votesArray
+                      const numericVotes = votesArray.filter(v => !v.disregarded)
                         .map(v => parseInt(v.vote, 10))
                         .filter(n => !isNaN(n));
                       
@@ -782,26 +782,48 @@ export default function Room() {
         <section className="flex-1 bg-[#0A0A0B] p-8 flex flex-col items-center justify-center relative overflow-y-auto">
           {/* The "Table" Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-40 auto-rows-max">
-            {roomState.users.filter(user => (user.isOnline || (isRevealed && user.hasVoted)) && !user.isSpectator).map(user => {
+            {roomState.users.filter(user => (user.isOnline || user.hasVoted) && !user.isSpectator).map(user => {
               if (isRevealed) {
                 // Revealed Card
                 return (
-                  <div key={user.id} className="flex flex-col items-center gap-3">
-                    <div className="w-24 h-36 bg-zinc-900 border-2 border-indigo-500/50 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/10">
-                      <span className="text-3xl font-bold text-white">{user.vote || '-'}</span>
+                  <div key={user.id} className="flex flex-col items-center gap-3 relative group">
+                    {isOwner && user.hasVoted && roomState.activeTaskId && (
+                      <button
+                        onClick={() => wsService.toggleVoteDisregard(roomState.activeTaskId, user.id, !user.disregarded)}
+                        className="absolute -top-3 -right-3 z-10 p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-500 rounded-full border border-zinc-700 opacity-0 group-hover:opacity-100 transition-all shadow-md"
+                        title={user.disregarded ? "Consider vote" : "Disregard vote"}
+                      >
+                        {user.disregarded ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                      </button>
+                    )}
+                    <div className={`w-24 h-36 border-2 rounded-xl flex items-center justify-center shadow-lg transition-all ${user.disregarded ? 'bg-zinc-900/40 border-zinc-800/50 opacity-50 grayscale shadow-none' : 'bg-zinc-900 border-indigo-500/50 shadow-indigo-500/10'}`}>
+                      <span className={`text-3xl font-bold ${user.disregarded ? 'text-zinc-600 line-through' : 'text-white'}`}>{user.vote || '-'}</span>
                     </div>
-                    <span className="text-xs text-zinc-400 font-medium truncate w-full text-center">{user.name}</span>
+                    <span className={`text-xs font-medium truncate w-full text-center ${user.disregarded ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                      {user.name} {user.disregarded && <span className="text-[9px] block text-red-500/70 uppercase">Disregarded</span>}
+                    </span>
                   </div>
                 );
               } else if (user.hasVoted) {
                 // Hidden Card (Voted)
                 return (
-                  <div key={user.id} className="flex flex-col items-center gap-3">
-                    <div className="w-24 h-36 bg-zinc-900 border-2 border-emerald-500/50 rounded-xl flex flex-col items-center justify-center shadow-lg shadow-emerald-500/10">
-                      <div className="w-8 h-10 border-2 border-emerald-700/50 rounded bg-emerald-900/20 mb-2"></div>
-                      <span className="text-[10px] uppercase tracking-widest text-emerald-500/80">Voted</span>
+                  <div key={user.id} className="flex flex-col items-center gap-3 relative group">
+                    {isOwner && roomState.activeTaskId && (
+                      <button
+                        onClick={() => wsService.toggleVoteDisregard(roomState.activeTaskId, user.id, !user.disregarded)}
+                        className="absolute -top-3 -right-3 z-10 p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-500 rounded-full border border-zinc-700 opacity-0 group-hover:opacity-100 transition-all shadow-md"
+                        title={user.disregarded ? "Consider vote" : "Disregard vote"}
+                      >
+                        {user.disregarded ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                      </button>
+                    )}
+                    <div className={`w-24 h-36 border-2 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all ${user.disregarded ? 'bg-zinc-900/40 border-zinc-800/50 opacity-50 shadow-none' : 'bg-zinc-900 border-emerald-500/50 shadow-emerald-500/10'}`}>
+                      <div className={`w-8 h-10 border-2 rounded mb-2 ${user.disregarded ? 'border-zinc-700/50 bg-zinc-800/20' : 'border-emerald-700/50 bg-emerald-900/20'}`}></div>
+                      <span className={`text-[10px] uppercase tracking-widest ${user.disregarded ? 'text-zinc-600' : 'text-emerald-500/80'}`}>Voted</span>
                     </div>
-                    <span className="text-xs text-zinc-400 font-medium truncate w-full text-center">{user.name}</span>
+                    <span className={`text-xs font-medium truncate w-full text-center ${user.disregarded ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                      {user.name} {user.disregarded && <span className="text-[9px] block text-red-500/70 uppercase">Disregarded</span>}
+                    </span>
                   </div>
                 );
               } else {
