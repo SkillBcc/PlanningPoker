@@ -87,8 +87,10 @@ setInterval(() => {
   }
 }, 1000);
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws: any) => {
   let currentUser: { roomId: string; userId: string } | null = null;
+  ws.currentUser = null;
+  ws.currentUser = null;
 
   ws.on('message', (message) => {
     try {
@@ -133,12 +135,13 @@ wss.on('connection', (ws) => {
           
           const existingUserIndex = room.users.findIndex(u => u.id === user.id);
           if (existingUserIndex >= 0) {
-            room.users[existingUserIndex] = { ...room.users[existingUserIndex], name: user.name, ws, isOnline: true };
+            room.users[existingUserIndex] = { ...room.users[existingUserIndex], name: user.name, isOnline: true };
           } else {
-            room.users.push({ ...user, ws, isOnline: true, isSpectator: false });
+            room.users.push({ ...user, isOnline: true, isSpectator: false });
           }
           
           currentUser = { roomId, userId: user.id };
+          ws.currentUser = currentUser;
           broadcastRoomState(roomId);
           break;
         }
@@ -367,17 +370,26 @@ wss.on('connection', (ws) => {
     if (currentUser) {
       const room = rooms.get(currentUser.roomId);
       if (room) {
-        const userIndex = room.users.findIndex(u => u.id === currentUser!.userId);
-        if (userIndex !== -1) {
-          room.users[userIndex].isOnline = false;
-          room.users[userIndex].ws = null;
-          
-          room.tasks.forEach(task => {
-            if (!task.isRevealed) {
-              delete task.votes[currentUser!.userId];
-            }
-          });
+        let hasOtherConnections = false;
+        wss.clients.forEach((client: any) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN && client.currentUser && client.currentUser.userId === currentUser.userId) {
+            hasOtherConnections = true;
+          }
+        });
+
+        if (!hasOtherConnections) {
+          const userIndex = room.users.findIndex(u => u.id === currentUser!.userId);
+          if (userIndex !== -1) {
+            room.users[userIndex].isOnline = false;
+            
+            room.tasks.forEach(task => {
+              if (!task.isRevealed) {
+                delete task.votes[currentUser!.userId];
+              }
+            });
+          }
         }
+        
         if (!room.users.some(u => u.isOnline)) {
           closedRooms.add(room.id);
           rooms.delete(room.id);
@@ -387,6 +399,7 @@ wss.on('connection', (ws) => {
       }
     }
   });
+
 });
 
 function broadcastRoomState(roomId: string) {
