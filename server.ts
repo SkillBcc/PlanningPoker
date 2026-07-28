@@ -434,8 +434,9 @@ function broadcastRoomState(roomId: string) {
     })
   };
 
-  room.users.forEach(u => {
-    if (u.isOnline && u.ws && u.ws.readyState === WebSocket.OPEN) {
+  wss.clients.forEach((client: any) => {
+    if (client.readyState === WebSocket.OPEN && client.currentUser && client.currentUser.roomId === roomId) {
+      const uId = client.currentUser.userId;
       const userState = {
         ...state,
         users: room.users.map(otherUser => {
@@ -446,11 +447,11 @@ function broadcastRoomState(roomId: string) {
             isOnline: otherUser.isOnline,
             isSpectator: otherUser.isSpectator,
             hasVoted: !!voteInfo,
-            vote: (isRevealed || otherUser.id === u.id) ? (voteInfo?.vote || null) : null
+            vote: (isRevealed || otherUser.id === uId) ? (voteInfo?.vote || null) : null
           };
         })
       };
-      u.ws.send(JSON.stringify({ type: 'ROOM_STATE', payload: userState }));
+      client.send(JSON.stringify({ type: 'ROOM_STATE', payload: userState }));
     }
   });
 }
@@ -470,7 +471,7 @@ async function startServer() {
     });
   }
 
-  server.listen(port, () => {
+  server.listen(Number(port), "0.0.0.0", () => {
     console.log(`Server running on port ${port}`);
   });
 }
