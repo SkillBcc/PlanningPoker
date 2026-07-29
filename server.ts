@@ -380,7 +380,8 @@ wss.on('connection', (ws: any) => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
+    console.log('WS CLOSED:', code, reason?.toString());
     if (currentUser) {
       const room = rooms.get(currentUser.roomId);
       if (room) {

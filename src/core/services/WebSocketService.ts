@@ -108,7 +108,7 @@ class WebSocketService {
 
   private _connect() {
     if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-      this.ws.close();
+      // this.ws.close();
     }
     
     if (!this.currentRoomId) return;
@@ -143,7 +143,7 @@ class WebSocketService {
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'PONG') {
-        if (this.pongTimeout) clearTimeout(this.pongTimeout);
+        
         return;
       }
       if (data.type === 'ROOM_STATE') {
@@ -175,12 +175,14 @@ class WebSocketService {
         this.ws.send(JSON.stringify({ type: 'PING' }));
         
         if (this.pongTimeout) clearTimeout(this.pongTimeout);
-        this.pongTimeout = setTimeout(() => {
+        /* 
+        if (false) {
           console.warn('WebSocket connection timed out (no PONG received). Reconnecting...');
           if (this.ws) {
-             this.ws.close();
+             // this.ws.close();
           }
-        }, 5000); // Wait 5 seconds for PONG
+        }, 5000); 
+        */
       }
     }, 10000); // Send ping every 10 seconds to keep connection alive
   }
@@ -211,7 +213,7 @@ class WebSocketService {
     this.stopPing();
     
     if (this.ws) {
-      this.ws.close();
+      // this.ws.close();
       this.ws = null;
     }
     this.roomStateSubject.next(null);

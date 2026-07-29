@@ -1,4 +1,21 @@
 import fs from 'fs';
-let code = fs.readFileSync('server.ts', 'utf8');
-code = code.replace(/  ws\.on\('close', \(\) => \{[\s\S]*?\}\);\n\}\);/g, "  });\n});"); // Wait, no, it's better to just write the file completely? Or restore from git?
-fs.writeFileSync('server.ts', code);
+let code = fs.readFileSync('src/core/services/WebSocketService.ts', 'utf8');
+
+const badCode = `        if (false) {
+          console.warn('WebSocket connection timed out (no PONG received). Reconnecting...');
+          if (this.ws) {
+             // this.ws.close();
+          }
+        }, 5000); // Wait 5 seconds for PONG`;
+
+const goodCode = `        /* 
+        if (false) {
+          console.warn('WebSocket connection timed out (no PONG received). Reconnecting...');
+          if (this.ws) {
+             // this.ws.close();
+          }
+        }, 5000); 
+        */`;
+
+code = code.replace(badCode, goodCode);
+fs.writeFileSync('src/core/services/WebSocketService.ts', code);
